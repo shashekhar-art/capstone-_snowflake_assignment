@@ -182,4 +182,3 @@ Always execute in this sequence to respect layer dependencies:
 | CONFIDENTIAL | Financial: revenue, profit, margin | Role-based access (Analyst+) |
 | INTERNAL | Aggregated metrics, KPIs | Available to all roles |
 | PUBLIC | Territory names, category labels | No restriction |
-# temp note added for revert demo
