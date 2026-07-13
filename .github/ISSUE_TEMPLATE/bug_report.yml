@@ -1,0 +1,45 @@
+name: Bug Report
+description: Report a data pipeline or SQL defect
+title: "[BUG] "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Please fill in as much detail as possible.
+
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Affected Layer
+      options: [ Bronze, Silver, Gold, SQL/Views, Export, Config, CI/CD ]
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      placeholder: What happened? What did you expect?
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to Reproduce
+      value: |
+        1. Run `python ...`
+        2. Query `SELECT ...`
+        3. Observe ...
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behaviour
+
+  - type: textarea
+    id: query_output
+    attributes:
+      label: Snowflake Query Output / Error Log
+      render: sql
