@@ -48,7 +48,7 @@ CSV_TABLE_MAP = {
 
 # ── Warehouse Sizes ────────────────────────────────────────────────────────────
 WH_SIZE_PROFILING  = "X-SMALL"
-WH_SIZE_LOADING    = "SMALL"
+WH_SIZE_LOADING    = "LARGE"   # resolved: LARGE covers both bronze load throughput and silver transforms
 WH_SIZE_TRANSFORM  = "MEDIUM"
 WH_SIZE_ANALYTICS  = "LARGE"
 

@@ -3,6 +3,7 @@ Silver Layer - Data Transformation Script
 Cleanses, enriches, and standardises Bronze data into the SILVER schema.
 Transformations applied:
   - Type casting (VARCHAR → DATE, NUMBER, etc.)
+  - CHANGELOG (feature/silver-transform): added INCOME_BAND thresholds documentation
   - NULL handling and default substitution
   - Name standardisation (INITCAP)
   - Derived columns (age, full_name, profit_margin, etc.)
