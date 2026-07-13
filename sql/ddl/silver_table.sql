@@ -1,0 +1,151 @@
+﻿-- =============================================================================
+-- SILVER LAYER DDL
+-- Adventure Works Capstone Project
+-- Purpose : Cleansed, typed, and enriched tables derived from Bronze.
+--           All VARCHAR dates cast to DATE; codes expanded to labels;
+--           derived columns (age, income_band, margin_pct) added.
+-- =============================================================================
+
+CREATE SCHEMA IF NOT EXISTS ADVENTURE_WORKS_DB.SILVER;
+
+-- =============================================================================
+-- SILVER_CALENDAR
+-- =============================================================================
+CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.SILVER.SILVER_CALENDAR (
+    DATE_KEY            DATE            NOT NULL COMMENT 'Calendar date (PK)',
+    YEAR                NUMBER(4)       NOT NULL,
+    MONTH_NUM           NUMBER(2)       NOT NULL,
+    MONTH_NAME          VARCHAR(10)     NOT NULL,
+    DAY_OF_MONTH        NUMBER(2)       NOT NULL,
+    DAY_OF_WEEK_NAME    VARCHAR(10)     NOT NULL,
+    DAY_OF_WEEK_NUM     NUMBER(1)       NOT NULL COMMENT '0=Sunday … 6=Saturday',
+    QUARTER_NUM         NUMBER(1)       NOT NULL,
+    QUARTER_NAME        VARCHAR(3)      NOT NULL COMMENT 'Q1 … Q4',
+    WEEK_OF_YEAR        NUMBER(2)       NOT NULL,
+    IS_WEEKEND          BOOLEAN         NOT NULL,
+    FIRST_DAY_OF_MONTH  DATE            NOT NULL,
+    LAST_DAY_OF_MONTH   DATE            NOT NULL,
+    LOAD_TIMESTAMP      TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+)
+COMMENT = 'Enriched calendar with day/month/quarter attributes';
+
+-- =============================================================================
+-- SILVER_TERRITORY
+-- =============================================================================
+CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.SILVER.SILVER_TERRITORY (
+    TERRITORY_KEY   NUMBER          NOT NULL,
+    REGION          VARCHAR(50)     NOT NULL,
+    COUNTRY         VARCHAR(50)     NOT NULL,
+    CONTINENT       VARCHAR(50)     NOT NULL,
+    LOAD_TIMESTAMP  TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+)
+COMMENT = 'Standardised territory reference (INITCAP, trimmed)';
+
+-- =============================================================================
+-- SILVER_PRODUCT_CATEGORY
+-- =============================================================================
+CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.SILVER.SILVER_PRODUCT_CATEGORY (
+    CATEGORY_KEY        NUMBER          NOT NULL,
+    CATEGORY_NAME       VARCHAR(50)     NOT NULL,
+    SUBCATEGORY_KEY     NUMBER,
+    SUBCATEGORY_NAME    VARCHAR(100),
+    LOAD_TIMESTAMP      TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+)
+COMMENT = 'Flattened category + subcategory hierarchy';
+
+-- =============================================================================
+-- SILVER_PRODUCT
+-- =============================================================================
+CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.SILVER.SILVER_PRODUCT (
+    PRODUCT_KEY         NUMBER          NOT NULL,
+    SUBCATEGORY_KEY     NUMBER,
+    PRODUCT_SKU         VARCHAR(20),
+    PRODUCT_NAME        VARCHAR(200),
+    MODEL_NAME          VARCHAR(100),
+    PRODUCT_DESCRIPTION VARCHAR(500),
+    PRODUCT_COLOR       VARCHAR(30),
+    PRODUCT_SIZE        VARCHAR(10),
+    PRODUCT_STYLE       VARCHAR(10),
+    PRODUCT_COST        NUMBER(12,4),
+    PRODUCT_PRICE       NUMBER(12,4),
+    GROSS_MARGIN        NUMBER(12,4)    COMMENT 'Price minus Cost',
+    MARGIN_PCT          NUMBER(7,2)     COMMENT 'Gross margin as % of price',
+    SUBCATEGORY_NAME    VARCHAR(100),
+    CATEGORY_NAME       VARCHAR(50),
+    CATEGORY_KEY        NUMBER,
+    LOAD_TIMESTAMP      TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+)
+COMMENT = 'Enriched product master with category hierarchy and margin metrics';
+
+-- =============================================================================
+-- SILVER_CUSTOMER
+-- =============================================================================
+CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.SILVER.SILVER_CUSTOMER (
+    CUSTOMER_KEY    NUMBER          NOT NULL,
+    PREFIX          VARCHAR(10),
+    FIRST_NAME      VARCHAR(50),
+    LAST_NAME       VARCHAR(50),
+    FULL_NAME       VARCHAR(101)    COMMENT 'Derived: FirstName + LastName',
+    BIRTH_DATE      DATE,
+    AGE             NUMBER(3)       COMMENT 'Derived: years from BIRTH_DATE to today',
+    MARITAL_STATUS  VARCHAR(10)     COMMENT 'Married | Single | Unknown',
+    GENDER          VARCHAR(10)     COMMENT 'Male | Female | Unknown',
+    EMAIL_ADDRESS   VARCHAR(100),
+    ANNUAL_INCOME   NUMBER,
+    INCOME_BAND     VARCHAR(15)     COMMENT 'Low | Medium | High | Very High',
+    TOTAL_CHILDREN  NUMBER,
+    EDUCATION_LEVEL VARCHAR(50),
+    OCCUPATION      VARCHAR(50),
+    IS_HOME_OWNER   BOOLEAN,
+    LOAD_TIMESTAMP  TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+)
+COMMENT = 'Cleansed customer master: codes expanded, derived age and income band';
+
+-- =============================================================================
+-- SILVER_SALES
+-- =============================================================================
+CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.SILVER.SILVER_SALES (
+    ORDER_NUMBER                VARCHAR(20)     NOT NULL,
+    ORDER_LINE_ITEM             NUMBER          NOT NULL,
+    ORDER_DATE                  DATE,
+    STOCK_DATE                  DATE,
+    DAYS_FROM_STOCK_TO_ORDER    NUMBER          COMMENT 'Lead time proxy',
+    PRODUCT_KEY                 NUMBER,
+    CUSTOMER_KEY                NUMBER,
+    TERRITORY_KEY               NUMBER,
+    ORDER_QUANTITY              NUMBER,
+    SALES_YEAR                  NUMBER(4)       COMMENT '2020 | 2021 | 2022',
+    SOURCE_FILE                 VARCHAR(100)
+)
+COMMENT = 'Consolidated sales transactions (2020–2022) with typed dates and lead time';
+
+-- =============================================================================
+-- SILVER_RETURNS
+-- =============================================================================
+CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.SILVER.SILVER_RETURNS (
+    RETURN_DATE     DATE,
+    TERRITORY_KEY   NUMBER,
+    PRODUCT_KEY     NUMBER,
+    RETURN_QUANTITY NUMBER,
+    LOAD_TIMESTAMP  TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+)
+COMMENT = 'Cleansed returns data with typed RETURN_DATE';
+
+-- =============================================================================
+-- SILVER_CATEGORY_SALES_UNPIVOT
+-- =============================================================================
+CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.SILVER.SILVER_CATEGORY_SALES_UNPIVOT (
+    SALE_DATE           DATE,
+    PRODUCT_CATEGORY    VARCHAR(50),
+    REGION              VARCHAR(20),
+    SALES_AMOUNT        NUMBER
+)
+COMMENT = 'Unpivoted category sales — one row per date × category × region';
+
+-- =============================================================================
+-- VERIFICATION
+-- =============================================================================
+-- SELECT TABLE_NAME, ROW_COUNT
+-- FROM   ADVENTURE_WORKS_DB.INFORMATION_SCHEMA.TABLES
+-- WHERE  TABLE_SCHEMA = 'SILVER'
+-- ORDER BY TABLE_NAME;
