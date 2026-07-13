@@ -48,7 +48,7 @@ CSV_TABLE_MAP = {
 
 # ── Warehouse Sizes ────────────────────────────────────────────────────────────
 WH_SIZE_PROFILING  = "X-SMALL"
-WH_SIZE_LOADING    = "MEDIUM"  # security-review: downsize loader to reduce cost surface
+WH_SIZE_LOADING    = "LARGE"   # resolved: LARGE balances perf (X-LARGE) vs security (MEDIUM)
 WH_SIZE_TRANSFORM  = "MEDIUM"
 WH_SIZE_ANALYTICS  = "LARGE"
 

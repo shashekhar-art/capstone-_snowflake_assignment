@@ -223,3 +223,70 @@ FROM FACT_SALES f
 JOIN DIM_DATE d ON f.ORDER_DATE_KEY = d.DATE_KEY
 GROUP BY d.YEAR, d.MONTH_NUM, d.MONTH_NAME
 ORDER BY d.YEAR, d.MONTH_NUM;
+
+-- =============================================================================
+-- 13. PRODUCT PRICE TIER REVENUE MIX
+-- =============================================================================
+SELECT
+    CASE
+        WHEN p.PRODUCT_PRICE < 50   THEN '01_Budget (<$50)'
+        WHEN p.PRODUCT_PRICE < 200  THEN '02_Mid-Range ($50-$199)'
+        WHEN p.PRODUCT_PRICE < 500  THEN '03_Premium ($200-$499)'
+        ELSE                             '04_Luxury ($500+)'
+    END                                        AS PRICE_TIER,
+    COUNT(DISTINCT f.ORDER_NUMBER)             AS TOTAL_ORDERS,
+    SUM(f.ORDER_QUANTITY)                      AS TOTAL_UNITS,
+    ROUND(SUM(f.GROSS_REVENUE), 2)             AS TOTAL_REVENUE,
+    ROUND(100 * SUM(f.GROSS_REVENUE)
+          / SUM(SUM(f.GROSS_REVENUE)) OVER (), 2) AS REVENUE_PCT
+FROM FACT_SALES f
+JOIN DIM_PRODUCT p ON f.PRODUCT_KEY = p.PRODUCT_KEY
+GROUP BY 1
+ORDER BY 1;
+
+-- =============================================================================
+-- 14. FISCAL QUARTER REVENUE  (fiscal year starts 1-Jul)
+-- =============================================================================
+SELECT
+    CASE
+        WHEN d.MONTH_NUM IN (7,8,9)    THEN d.YEAR || '-Q1'
+        WHEN d.MONTH_NUM IN (10,11,12) THEN d.YEAR || '-Q2'
+        WHEN d.MONTH_NUM IN (1,2,3)    THEN d.YEAR || '-Q3'
+        ELSE                                d.YEAR || '-Q4'
+    END                                    AS FISCAL_QUARTER,
+    CASE
+        WHEN d.MONTH_NUM >= 7 THEN d.YEAR
+        ELSE d.YEAR - 1
+    END                                    AS FISCAL_YEAR,
+    ROUND(SUM(f.GROSS_REVENUE), 2)         AS REVENUE,
+    ROUND(SUM(f.TOTAL_COST), 2)            AS COST,
+    ROUND(SUM(f.GROSS_REVENUE) - SUM(f.TOTAL_COST), 2) AS GROSS_PROFIT,
+    ROUND(100 * (SUM(f.GROSS_REVENUE) - SUM(f.TOTAL_COST))
+          / NULLIF(SUM(f.GROSS_REVENUE), 0), 2)        AS MARGIN_PCT
+FROM FACT_SALES f
+JOIN DIM_DATE d ON f.ORDER_DATE_KEY = d.DATE_KEY
+GROUP BY 1, 2
+ORDER BY 2, 1;
+
+-- =============================================================================
+-- 15. CUSTOMER AGE BAND ANALYSIS
+-- =============================================================================
+SELECT
+    CASE
+        WHEN DATEDIFF('year', c.BIRTH_DATE, CURRENT_DATE()) < 30 THEN '18-29'
+        WHEN DATEDIFF('year', c.BIRTH_DATE, CURRENT_DATE()) < 40 THEN '30-39'
+        WHEN DATEDIFF('year', c.BIRTH_DATE, CURRENT_DATE()) < 50 THEN '40-49'
+        WHEN DATEDIFF('year', c.BIRTH_DATE, CURRENT_DATE()) < 60 THEN '50-59'
+        ELSE '60+'
+    END                                    AS AGE_BAND,
+    COUNT(DISTINCT c.CUSTOMER_KEY)         AS CUSTOMERS,
+    COUNT(DISTINCT f.ORDER_NUMBER)         AS TOTAL_ORDERS,
+    ROUND(SUM(f.GROSS_REVENUE), 2)         AS TOTAL_REVENUE,
+    ROUND(AVG(f.GROSS_REVENUE), 2)         AS AVG_ORDER_VALUE,
+    ROUND(SUM(f.GROSS_REVENUE)
+          / NULLIF(COUNT(DISTINCT c.CUSTOMER_KEY), 0), 2) AS REVENUE_PER_CUSTOMER
+FROM FACT_SALES f
+JOIN DIM_CUSTOMER c ON f.CUSTOMER_KEY = c.CUSTOMER_KEY
+WHERE c.BIRTH_DATE IS NOT NULL
+GROUP BY 1
+ORDER BY 1;
