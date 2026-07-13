@@ -156,3 +156,23 @@ FROM TABLE(
         POLICY_NAME => 'ADVENTURE_WORKS_DB.GOLD.MASK_EMAIL_ADDRESS'
     )
 );
+
+-- =============================================================================
+-- 7. PHONE NUMBER MASKING  (new — security-update branch)
+-- Engineer  : full phone number
+-- Analyst   : last 4 digits visible  (***-***-1234)
+-- Viewer    : fully masked  (***-***-****)
+-- =============================================================================
+CREATE OR REPLACE MASKING POLICY ADVENTURE_WORKS_DB.GOLD.MASK_PHONE_NUMBER
+    AS (VAL VARCHAR) RETURNS VARCHAR ->
+    CASE
+        WHEN CURRENT_ROLE() IN ('CAPSTONE_SYSADMIN', 'CAPSTONE_DATA_ENGINEER')
+            THEN VAL
+        WHEN CURRENT_ROLE() = 'CAPSTONE_ANALYST'
+            THEN CONCAT('***-***-', RIGHT(VAL, 4))
+        ELSE '***-***-****'
+    END;
+
+-- Apply to DIM_CUSTOMER.PHONE if column exists
+-- ALTER TABLE ADVENTURE_WORKS_DB.GOLD.DIM_CUSTOMER
+--     MODIFY COLUMN PHONE SET MASKING POLICY ADVENTURE_WORKS_DB.GOLD.MASK_PHONE_NUMBER;
