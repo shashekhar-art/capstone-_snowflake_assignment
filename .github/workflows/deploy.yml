@@ -1,0 +1,98 @@
+name: Deploy to Snowflake
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      target_layer:
+        description: "Which layer to deploy"
+        required: true
+        default: "all"
+        type: choice
+        options: [ all, bronze, silver, gold, security, views ]
+
+jobs:
+  deploy:
+    name: Deploy ${{ github.event.inputs.target_layer || 'all' }} layer
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install snowflake-connector-python pandas openpyxl reportlab
+
+      - name: Bootstrap Bronze DDL
+        if: github.event.inputs.target_layer == 'all' || github.event.inputs.target_layer == 'bronze'
+        run: python bronze_scripts/load_to_bronze.py
+        env:
+          SNOWFLAKE_ACCOUNT:   ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER:      ${{ secrets.SNOWFLAKE_USER }}
+          SNOWFLAKE_PASSWORD:  ${{ secrets.SNOWFLAKE_PASSWORD }}
+          SNOWFLAKE_DATABASE:  ${{ secrets.SNOWFLAKE_DATABASE }}
+          SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
+
+      - name: Transform Silver
+        if: github.event.inputs.target_layer == 'all' || github.event.inputs.target_layer == 'silver'
+        run: python silver_scripts/transform_to_silver.py
+        env:
+          SNOWFLAKE_ACCOUNT:   ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER:      ${{ secrets.SNOWFLAKE_USER }}
+          SNOWFLAKE_PASSWORD:  ${{ secrets.SNOWFLAKE_PASSWORD }}
+          SNOWFLAKE_DATABASE:  ${{ secrets.SNOWFLAKE_DATABASE }}
+          SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
+
+      - name: Load Gold Dimensions
+        if: github.event.inputs.target_layer == 'all' || github.event.inputs.target_layer == 'gold'
+        run: python gold_scripts/load_dimensional.py
+        env:
+          SNOWFLAKE_ACCOUNT:   ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER:      ${{ secrets.SNOWFLAKE_USER }}
+          SNOWFLAKE_PASSWORD:  ${{ secrets.SNOWFLAKE_PASSWORD }}
+          SNOWFLAKE_DATABASE:  ${{ secrets.SNOWFLAKE_DATABASE }}
+          SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
+
+      - name: Load Gold Facts
+        if: github.event.inputs.target_layer == 'all' || github.event.inputs.target_layer == 'gold'
+        run: python gold_scripts/load_facts.py
+        env:
+          SNOWFLAKE_ACCOUNT:   ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER:      ${{ secrets.SNOWFLAKE_USER }}
+          SNOWFLAKE_PASSWORD:  ${{ secrets.SNOWFLAKE_PASSWORD }}
+          SNOWFLAKE_DATABASE:  ${{ secrets.SNOWFLAKE_DATABASE }}
+          SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
+
+      - name: Apply Security (RBAC + Masking)
+        if: github.event.inputs.target_layer == 'all' || github.event.inputs.target_layer == 'security'
+        run: |
+          python -c "
+          import sys; sys.path.insert(0, '.')
+          from config.snowflake_config import execute_sql_file
+          execute_sql_file('sql/security/rbac.sql')
+          execute_sql_file('sql/security/masking_policies.sql')
+          print('Security applied')
+          "
+        env:
+          SNOWFLAKE_ACCOUNT:   ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER:      ${{ secrets.SNOWFLAKE_USER }}
+          SNOWFLAKE_PASSWORD:  ${{ secrets.SNOWFLAKE_PASSWORD }}
+          SNOWFLAKE_DATABASE:  ${{ secrets.SNOWFLAKE_DATABASE }}
+          SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
+
+      - name: Create deployment summary
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch | ${{ github.ref_name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Actor | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Layer | ${{ github.event.inputs.target_layer || 'all' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Status | ✅ Success |" >> $GITHUB_STEP_SUMMARY
