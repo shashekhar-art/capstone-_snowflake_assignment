@@ -2,6 +2,9 @@
 # Adventure Works Capstone Project — .gitignore
 # =============================================================================
 
+# ── Claude Code internal directory ───────────────────────────────────────────
+.claude/
+
 # ── Credentials & Secrets ─────────────────────────────────────────────────────
 .env
 .env.*
