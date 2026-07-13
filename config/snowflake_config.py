@@ -3,6 +3,18 @@ Snowflake Connection Configuration
 Capstone Project - Adventure Works Sales Analytics
 Account : uq57089.ap-southeast-7.aws
 App URL : https://app.snowflake.com/ap-southeast-7.aws/uq57089
+
+Assignment Database Mapping
+----------------------------
+Assignment Spec          This Implementation
+--------------------     ----------------------
+CAPSTONE_BRONZE_DB   ->  ADVENTURE_WORKS_DB  (BRONZE schema)
+CAPSTONE_SILVER_DB   ->  ADVENTURE_WORKS_DB  (SILVER schema)
+CAPSTONE_GOLD_DB     ->  ADVENTURE_WORKS_DB  (GOLD schema)
+CAPSTONE_WH          ->  COMPUTE_WH
+RAW schema           ->  BRONZE
+CURATED schema       ->  SILVER
+ANALYTICS schema     ->  GOLD
 """
 import os
 from dotenv import load_dotenv
@@ -19,10 +31,21 @@ SNOWFLAKE_CONFIG = {
     "role":      os.getenv("SNOWFLAKE_ROLE",        "SYSADMIN"),
 }
 
+# ── Capstone Assignment Database Names (as specified in assignment) ────────────
+CAPSTONE_BRONZE_DB = os.getenv("CAPSTONE_BRONZE_DB", "ADVENTURE_WORKS_DB")
+CAPSTONE_SILVER_DB = os.getenv("CAPSTONE_SILVER_DB", "ADVENTURE_WORKS_DB")
+CAPSTONE_GOLD_DB   = os.getenv("CAPSTONE_GOLD_DB",   "ADVENTURE_WORKS_DB")
+CAPSTONE_WH        = os.getenv("CAPSTONE_WH",         "COMPUTE_WH")
+
 # ── Medallion Layer Schemas ────────────────────────────────────────────────────
-BRONZE_SCHEMA = "BRONZE"
-SILVER_SCHEMA = "SILVER"
-GOLD_SCHEMA   = "GOLD"
+BRONZE_SCHEMA = "BRONZE"    # assignment alias: RAW
+SILVER_SCHEMA = "SILVER"    # assignment alias: CURATED
+GOLD_SCHEMA   = "GOLD"      # assignment alias: ANALYTICS
+
+# ── Assignment Schema Aliases ─────────────────────────────────────────────────
+RAW_SCHEMA       = BRONZE_SCHEMA
+CURATED_SCHEMA   = SILVER_SCHEMA
+ANALYTICS_SCHEMA = GOLD_SCHEMA
 
 # ── Internal Stage ─────────────────────────────────────────────────────────────
 INTERNAL_STAGE = "@ADVENTURE_WORKS_DB.BRONZE.RAW_DATA_STAGE"
