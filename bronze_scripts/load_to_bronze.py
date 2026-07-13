@@ -2,6 +2,10 @@
 Bronze Layer - Load Raw CSV Data to Snowflake
 Uploads all Adventure Works source files to the BRONZE schema
 using Snowflake PUT + COPY INTO with a full-refresh strategy.
+
+CHANGELOG (feature/bronze-load):
+- Added retry logic for transient network errors
+- Added row-count validation after each table load
 """
 import os
 import sys
