@@ -1,0 +1,215 @@
+﻿-- =============================================================================
+-- ANALYTICAL VIEWS
+-- Adventure Works Capstone Project
+-- Purpose : Reusable views over the GOLD star schema for BI tools,
+--           dashboards, and self-service analytics.
+-- =============================================================================
+
+USE DATABASE ADVENTURE_WORKS_DB;
+USE SCHEMA   ADVENTURE_WORKS_DB.GOLD;
+
+-- =============================================================================
+-- VW_SALES_DETAIL  —  Fully joined sales fact with all dimension attributes
+-- =============================================================================
+CREATE OR REPLACE VIEW ADVENTURE_WORKS_DB.GOLD.VW_SALES_DETAIL
+COMMENT = 'Flattened sales view — one row per order line item with all dimension labels'
+AS
+SELECT
+    -- Order identifiers
+    f.ORDER_NUMBER,
+    f.ORDER_LINE_ITEM,
+    f.SALES_YEAR,
+
+    -- Date attributes
+    f.ORDER_DATE_KEY            AS ORDER_DATE,
+    d.YEAR,
+    d.MONTH_NAME,
+    d.QUARTER_NAME,
+    d.DAY_OF_WEEK_NAME,
+    d.IS_WEEKEND,
+    d.FISCAL_YEAR,
+    d.FISCAL_QUARTER,
+
+    -- Product attributes
+    p.PRODUCT_NAME,
+    p.PRODUCT_SKU,
+    p.MODEL_NAME,
+    p.PRODUCT_COLOR,
+    p.PRODUCT_SIZE,
+    p.SUBCATEGORY_NAME,
+    p.CATEGORY_NAME,
+    p.PRICE_TIER,
+
+    -- Customer attributes
+    c.FULL_NAME                 AS CUSTOMER_NAME,
+    c.GENDER,
+    c.MARITAL_STATUS,
+    c.OCCUPATION,
+    c.INCOME_BAND,
+    c.EDUCATION_LEVEL,
+    c.IS_HOME_OWNER,
+    c.AGE,
+
+    -- Territory attributes
+    t.REGION,
+    t.COUNTRY,
+    t.CONTINENT,
+
+    -- Measures
+    f.ORDER_QUANTITY,
+    f.UNIT_PRICE,
+    f.UNIT_COST,
+    f.GROSS_REVENUE,
+    f.TOTAL_COST,
+    f.GROSS_PROFIT,
+    f.MARGIN_PCT,
+    f.LEAD_TIME_DAYS
+
+FROM ADVENTURE_WORKS_DB.GOLD.FACT_SALES f
+JOIN ADVENTURE_WORKS_DB.GOLD.DIM_DATE      d ON f.ORDER_DATE_KEY = d.DATE_KEY
+JOIN ADVENTURE_WORKS_DB.GOLD.DIM_PRODUCT   p ON f.PRODUCT_KEY   = p.PRODUCT_KEY
+JOIN ADVENTURE_WORKS_DB.GOLD.DIM_CUSTOMER  c ON f.CUSTOMER_KEY  = c.CUSTOMER_KEY
+JOIN ADVENTURE_WORKS_DB.GOLD.DIM_TERRITORY t ON f.TERRITORY_KEY = t.TERRITORY_KEY;
+
+-- =============================================================================
+-- VW_MONTHLY_KPI  —  Month-level KPIs for dashboard tile cards
+-- =============================================================================
+CREATE OR REPLACE VIEW ADVENTURE_WORKS_DB.GOLD.VW_MONTHLY_KPI
+COMMENT = 'Monthly revenue, profit, orders, and units — ready for KPI tiles'
+AS
+SELECT
+    d.YEAR,
+    d.MONTH_NUM,
+    d.MONTH_NAME,
+    d.YEAR || '-' || LPAD(d.MONTH_NUM::VARCHAR, 2, '0') AS YEAR_MONTH,
+    COUNT(DISTINCT f.ORDER_NUMBER)              AS TOTAL_ORDERS,
+    COUNT(f.ORDER_LINE_ITEM)                    AS TOTAL_LINE_ITEMS,
+    SUM(f.ORDER_QUANTITY)                       AS TOTAL_UNITS,
+    ROUND(SUM(f.GROSS_REVENUE),  2)             AS TOTAL_REVENUE,
+    ROUND(SUM(f.TOTAL_COST),     2)             AS TOTAL_COST,
+    ROUND(SUM(f.GROSS_PROFIT),   2)             AS TOTAL_PROFIT,
+    ROUND(AVG(f.MARGIN_PCT),     2)             AS AVG_MARGIN_PCT,
+    ROUND(SUM(f.GROSS_REVENUE) / COUNT(DISTINCT f.ORDER_NUMBER), 2) AS AVG_ORDER_VALUE
+FROM ADVENTURE_WORKS_DB.GOLD.FACT_SALES f
+JOIN ADVENTURE_WORKS_DB.GOLD.DIM_DATE d ON f.ORDER_DATE_KEY = d.DATE_KEY
+GROUP BY 1,2,3,4;
+
+-- =============================================================================
+-- VW_PRODUCT_PERFORMANCE  —  Product-level revenue and return metrics
+-- =============================================================================
+CREATE OR REPLACE VIEW ADVENTURE_WORKS_DB.GOLD.VW_PRODUCT_PERFORMANCE
+COMMENT = 'Product revenue, profit, units sold, return rate, and return impact'
+AS
+SELECT
+    p.PRODUCT_KEY,
+    p.PRODUCT_NAME,
+    p.PRODUCT_SKU,
+    p.CATEGORY_NAME,
+    p.SUBCATEGORY_NAME,
+    p.PRICE_TIER,
+    p.PRODUCT_PRICE,
+    p.MARGIN_PCT                                AS LIST_MARGIN_PCT,
+    SUM(f.ORDER_QUANTITY)                       AS UNITS_SOLD,
+    ROUND(SUM(f.GROSS_REVENUE), 2)              AS TOTAL_REVENUE,
+    ROUND(SUM(f.GROSS_PROFIT),  2)              AS TOTAL_PROFIT,
+    COALESCE(SUM(r.RETURN_QUANTITY), 0)         AS UNITS_RETURNED,
+    ROUND(COALESCE(SUM(r.RETURN_QUANTITY), 0)
+          / NULLIF(SUM(f.ORDER_QUANTITY), 0) * 100, 2) AS RETURN_RATE_PCT,
+    ROUND(COALESCE(SUM(r.RETURN_REVENUE_IMPACT), 0), 2) AS RETURN_REVENUE_IMPACT
+FROM ADVENTURE_WORKS_DB.GOLD.FACT_SALES f
+JOIN ADVENTURE_WORKS_DB.GOLD.DIM_PRODUCT p ON f.PRODUCT_KEY = p.PRODUCT_KEY
+LEFT JOIN ADVENTURE_WORKS_DB.GOLD.FACT_RETURNS r ON f.PRODUCT_KEY = r.PRODUCT_KEY
+GROUP BY 1,2,3,4,5,6,7,8;
+
+-- =============================================================================
+-- VW_CUSTOMER_360  —  Customer summary with RFM-style metrics
+-- =============================================================================
+CREATE OR REPLACE VIEW ADVENTURE_WORKS_DB.GOLD.VW_CUSTOMER_360
+COMMENT = 'Customer 360 view: demographics + purchase behaviour + RFM signals'
+AS
+WITH base AS (
+    SELECT
+        f.CUSTOMER_KEY,
+        MIN(f.ORDER_DATE_KEY)                       AS FIRST_PURCHASE_DATE,
+        MAX(f.ORDER_DATE_KEY)                       AS LAST_PURCHASE_DATE,
+        DATEDIFF('day', MAX(f.ORDER_DATE_KEY),
+                 (SELECT MAX(ORDER_DATE_KEY) FROM ADVENTURE_WORKS_DB.GOLD.FACT_SALES)) AS RECENCY_DAYS,
+        COUNT(DISTINCT f.ORDER_NUMBER)              AS FREQUENCY,
+        ROUND(SUM(f.GROSS_REVENUE), 2)              AS MONETARY_VALUE,
+        ROUND(SUM(f.GROSS_REVENUE)
+              / COUNT(DISTINCT f.ORDER_NUMBER), 2)  AS AVG_ORDER_VALUE,
+        SUM(f.ORDER_QUANTITY)                       AS TOTAL_UNITS_PURCHASED
+    FROM ADVENTURE_WORKS_DB.GOLD.FACT_SALES f
+    GROUP BY f.CUSTOMER_KEY
+)
+SELECT
+    c.CUSTOMER_KEY,
+    c.FULL_NAME,
+    c.GENDER,
+    c.AGE,
+    c.INCOME_BAND,
+    c.OCCUPATION,
+    c.EDUCATION_LEVEL,
+    c.MARITAL_STATUS,
+    c.IS_HOME_OWNER,
+    b.FIRST_PURCHASE_DATE,
+    b.LAST_PURCHASE_DATE,
+    b.RECENCY_DAYS,
+    b.FREQUENCY,
+    b.MONETARY_VALUE,
+    b.AVG_ORDER_VALUE,
+    b.TOTAL_UNITS_PURCHASED,
+    -- Simple RFM segment
+    CASE
+        WHEN b.RECENCY_DAYS <= 30  AND b.FREQUENCY >= 5 THEN 'Champions'
+        WHEN b.RECENCY_DAYS <= 90  AND b.FREQUENCY >= 3 THEN 'Loyal'
+        WHEN b.RECENCY_DAYS <= 180 AND b.FREQUENCY >= 2 THEN 'Potential Loyalist'
+        WHEN b.RECENCY_DAYS <= 365                       THEN 'At Risk'
+        ELSE                                                  'Lost'
+    END AS RFM_SEGMENT
+FROM ADVENTURE_WORKS_DB.GOLD.DIM_CUSTOMER c
+JOIN base b ON c.CUSTOMER_KEY = b.CUSTOMER_KEY;
+
+-- =============================================================================
+-- VW_TERRITORY_SUMMARY  —  Revenue and order metrics rolled up by geography
+-- =============================================================================
+CREATE OR REPLACE VIEW ADVENTURE_WORKS_DB.GOLD.VW_TERRITORY_SUMMARY
+COMMENT = 'Revenue and orders grouped by Continent → Country → Region'
+AS
+SELECT
+    t.CONTINENT,
+    t.COUNTRY,
+    t.REGION,
+    t.REGION_CODE,
+    COUNT(DISTINCT f.ORDER_NUMBER)              AS TOTAL_ORDERS,
+    SUM(f.ORDER_QUANTITY)                       AS TOTAL_UNITS,
+    ROUND(SUM(f.GROSS_REVENUE), 2)              AS TOTAL_REVENUE,
+    ROUND(SUM(f.GROSS_PROFIT),  2)              AS TOTAL_PROFIT,
+    ROUND(SUM(f.GROSS_REVENUE) * 100.0
+          / SUM(SUM(f.GROSS_REVENUE)) OVER (), 2) AS REVENUE_SHARE_PCT
+FROM ADVENTURE_WORKS_DB.GOLD.FACT_SALES f
+JOIN ADVENTURE_WORKS_DB.GOLD.DIM_TERRITORY t ON f.TERRITORY_KEY = t.TERRITORY_KEY
+GROUP BY 1,2,3,4;
+
+-- =============================================================================
+-- VW_RETURN_ANALYSIS  —  Returns joined with product and territory
+-- =============================================================================
+CREATE OR REPLACE VIEW ADVENTURE_WORKS_DB.GOLD.VW_RETURN_ANALYSIS
+COMMENT = 'Return transactions with product and territory context'
+AS
+SELECT
+    r.RETURN_DATE_KEY                           AS RETURN_DATE,
+    dd.YEAR                                     AS RETURN_YEAR,
+    dd.MONTH_NAME                               AS RETURN_MONTH,
+    p.PRODUCT_NAME,
+    p.CATEGORY_NAME,
+    p.SUBCATEGORY_NAME,
+    t.REGION,
+    t.COUNTRY,
+    r.RETURN_QUANTITY,
+    r.UNIT_PRICE,
+    r.RETURN_REVENUE_IMPACT
+FROM ADVENTURE_WORKS_DB.GOLD.FACT_RETURNS r
+JOIN ADVENTURE_WORKS_DB.GOLD.DIM_PRODUCT   p  ON r.PRODUCT_KEY      = p.PRODUCT_KEY
+JOIN ADVENTURE_WORKS_DB.GOLD.DIM_TERRITORY t  ON r.TERRITORY_KEY    = t.TERRITORY_KEY
+JOIN ADVENTURE_WORKS_DB.GOLD.DIM_DATE      dd ON r.RETURN_DATE_KEY  = dd.DATE_KEY;

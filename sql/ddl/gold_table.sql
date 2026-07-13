@@ -1,0 +1,187 @@
+﻿-- =============================================================================
+-- GOLD LAYER DDL  —  Star Schema Data Mart
+-- Adventure Works Capstone Project
+-- Schema  : ADVENTURE_WORKS_DB.GOLD
+-- Model   : Star Schema
+--           4 Dimensions: DIM_DATE, DIM_CUSTOMER, DIM_PRODUCT, DIM_TERRITORY
+--           2 Facts     : FACT_SALES, FACT_RETURNS
+-- =============================================================================
+
+CREATE SCHEMA IF NOT EXISTS ADVENTURE_WORKS_DB.GOLD;
+
+-- =============================================================================
+-- DIMENSION: DIM_DATE
+-- =============================================================================
+CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.GOLD.DIM_DATE (
+    DATE_KEY            DATE        NOT NULL    COMMENT 'Natural primary key (the date)',
+    YEAR                NUMBER(4)   NOT NULL,
+    MONTH_NUM           NUMBER(2)   NOT NULL,
+    MONTH_NAME          VARCHAR(10) NOT NULL,
+    DAY_OF_MONTH        NUMBER(2)   NOT NULL,
+    DAY_OF_WEEK_NAME    VARCHAR(10) NOT NULL,
+    DAY_OF_WEEK_NUM     NUMBER(1)   NOT NULL,
+    QUARTER_NUM         NUMBER(1)   NOT NULL,
+    QUARTER_NAME        VARCHAR(3)  NOT NULL,
+    WEEK_OF_YEAR        NUMBER(2)   NOT NULL,
+    IS_WEEKEND          BOOLEAN     NOT NULL,
+    FIRST_DAY_OF_MONTH  DATE        NOT NULL,
+    LAST_DAY_OF_MONTH   DATE        NOT NULL,
+    FISCAL_YEAR         NUMBER(4)   NOT NULL    COMMENT 'Fiscal year starting July 1',
+    FISCAL_MONTH        NUMBER(2)   NOT NULL,
+    FISCAL_QUARTER      VARCHAR(3)  NOT NULL    COMMENT 'FQ1 … FQ4',
+    LOAD_TIMESTAMP      TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+)
+COMMENT = 'Date dimension with calendar and fiscal attributes'
+CLUSTER BY (YEAR, MONTH_NUM);
+
+ALTER TABLE ADVENTURE_WORKS_DB.GOLD.DIM_DATE
+    ADD PRIMARY KEY (DATE_KEY) RELY NOVALIDATE;
+
+-- =============================================================================
+-- DIMENSION: DIM_CUSTOMER
+-- =============================================================================
+CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.GOLD.DIM_CUSTOMER (
+    CUSTOMER_KEY    NUMBER          NOT NULL    COMMENT 'Natural primary key',
+    PREFIX          VARCHAR(10),
+    FIRST_NAME      VARCHAR(50),
+    LAST_NAME       VARCHAR(50),
+    FULL_NAME       VARCHAR(101),
+    BIRTH_DATE      DATE,
+    AGE             NUMBER(3),
+    MARITAL_STATUS  VARCHAR(10),
+    GENDER          VARCHAR(10),
+    EMAIL_ADDRESS   VARCHAR(100),
+    ANNUAL_INCOME   NUMBER,
+    INCOME_BAND     VARCHAR(15),
+    TOTAL_CHILDREN  NUMBER,
+    EDUCATION_LEVEL VARCHAR(50),
+    OCCUPATION      VARCHAR(50),
+    IS_HOME_OWNER   BOOLEAN,
+    LOAD_TIMESTAMP  TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+)
+COMMENT = 'Customer dimension — SCD Type 1 (full refresh)'
+CLUSTER BY (INCOME_BAND, OCCUPATION);
+
+ALTER TABLE ADVENTURE_WORKS_DB.GOLD.DIM_CUSTOMER
+    ADD PRIMARY KEY (CUSTOMER_KEY) RELY NOVALIDATE;
+
+-- =============================================================================
+-- DIMENSION: DIM_PRODUCT
+-- =============================================================================
+CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.GOLD.DIM_PRODUCT (
+    PRODUCT_KEY         NUMBER          NOT NULL    COMMENT 'Natural primary key',
+    PRODUCT_SKU         VARCHAR(20),
+    PRODUCT_NAME        VARCHAR(200),
+    MODEL_NAME          VARCHAR(100),
+    PRODUCT_DESCRIPTION VARCHAR(500),
+    PRODUCT_COLOR       VARCHAR(30),
+    PRODUCT_SIZE        VARCHAR(10),
+    PRODUCT_STYLE       VARCHAR(10),
+    PRODUCT_COST        NUMBER(12,4),
+    PRODUCT_PRICE       NUMBER(12,4),
+    GROSS_MARGIN        NUMBER(12,4),
+    MARGIN_PCT          NUMBER(7,2),
+    SUBCATEGORY_KEY     NUMBER,
+    SUBCATEGORY_NAME    VARCHAR(100),
+    CATEGORY_KEY        NUMBER,
+    CATEGORY_NAME       VARCHAR(50),
+    PRICE_TIER          VARCHAR(15)     COMMENT 'Budget | Mid-Range | Premium | Luxury',
+    LOAD_TIMESTAMP      TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+)
+COMMENT = 'Product dimension with category hierarchy and price tier'
+CLUSTER BY (CATEGORY_NAME, PRICE_TIER);
+
+ALTER TABLE ADVENTURE_WORKS_DB.GOLD.DIM_PRODUCT
+    ADD PRIMARY KEY (PRODUCT_KEY) RELY NOVALIDATE;
+
+-- =============================================================================
+-- DIMENSION: DIM_TERRITORY
+-- =============================================================================
+CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.GOLD.DIM_TERRITORY (
+    TERRITORY_KEY   NUMBER          NOT NULL    COMMENT 'Natural primary key',
+    REGION          VARCHAR(50),
+    COUNTRY         VARCHAR(50),
+    CONTINENT       VARCHAR(50),
+    REGION_CODE     VARCHAR(5)      COMMENT 'Abbreviated region identifier',
+    LOAD_TIMESTAMP  TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+)
+COMMENT = 'Sales territory geography dimension';
+
+ALTER TABLE ADVENTURE_WORKS_DB.GOLD.DIM_TERRITORY
+    ADD PRIMARY KEY (TERRITORY_KEY) RELY NOVALIDATE;
+
+-- =============================================================================
+-- FACT: FACT_SALES
+-- Grain: one row per order line item
+-- =============================================================================
+CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.GOLD.FACT_SALES (
+    -- Degenerate dimensions
+    ORDER_NUMBER        VARCHAR(20)     NOT NULL,
+    ORDER_LINE_ITEM     NUMBER          NOT NULL,
+
+    -- Foreign keys
+    ORDER_DATE_KEY      DATE            COMMENT 'FK → DIM_DATE.DATE_KEY',
+    STOCK_DATE_KEY      DATE            COMMENT 'Stock date (informational FK)',
+    PRODUCT_KEY         NUMBER          COMMENT 'FK → DIM_PRODUCT.PRODUCT_KEY',
+    CUSTOMER_KEY        NUMBER          COMMENT 'FK → DIM_CUSTOMER.CUSTOMER_KEY',
+    TERRITORY_KEY       NUMBER          COMMENT 'FK → DIM_TERRITORY.TERRITORY_KEY',
+
+    -- Degenerate attributes
+    SALES_YEAR          NUMBER(4),
+
+    -- Additive measures
+    ORDER_QUANTITY      NUMBER,
+    UNIT_PRICE          NUMBER(12,4),
+    UNIT_COST           NUMBER(12,4),
+    GROSS_REVENUE       NUMBER(14,2)    COMMENT 'Quantity × Unit Price',
+    TOTAL_COST          NUMBER(14,2)    COMMENT 'Quantity × Unit Cost',
+    GROSS_PROFIT        NUMBER(14,2)    COMMENT 'Revenue − Cost',
+    MARGIN_PCT          NUMBER(7,2),
+    LEAD_TIME_DAYS      NUMBER          COMMENT 'Days from Stock to Order date',
+
+    -- Audit
+    LOAD_TIMESTAMP      TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+)
+COMMENT = 'Sales fact table — grain: order line item'
+CLUSTER BY (ORDER_DATE_KEY, TERRITORY_KEY, PRODUCT_KEY);
+
+-- Informational FK constraints (NOVALIDATE — not enforced by Snowflake)
+ALTER TABLE ADVENTURE_WORKS_DB.GOLD.FACT_SALES
+    ADD FOREIGN KEY (PRODUCT_KEY)    REFERENCES ADVENTURE_WORKS_DB.GOLD.DIM_PRODUCT(PRODUCT_KEY)     RELY NOVALIDATE;
+ALTER TABLE ADVENTURE_WORKS_DB.GOLD.FACT_SALES
+    ADD FOREIGN KEY (CUSTOMER_KEY)   REFERENCES ADVENTURE_WORKS_DB.GOLD.DIM_CUSTOMER(CUSTOMER_KEY)   RELY NOVALIDATE;
+ALTER TABLE ADVENTURE_WORKS_DB.GOLD.FACT_SALES
+    ADD FOREIGN KEY (TERRITORY_KEY)  REFERENCES ADVENTURE_WORKS_DB.GOLD.DIM_TERRITORY(TERRITORY_KEY) RELY NOVALIDATE;
+ALTER TABLE ADVENTURE_WORKS_DB.GOLD.FACT_SALES
+    ADD FOREIGN KEY (ORDER_DATE_KEY) REFERENCES ADVENTURE_WORKS_DB.GOLD.DIM_DATE(DATE_KEY)            RELY NOVALIDATE;
+
+-- =============================================================================
+-- FACT: FACT_RETURNS
+-- Grain: one row per return record (ReturnDate × TerritoryKey × ProductKey)
+-- =============================================================================
+CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.GOLD.FACT_RETURNS (
+    RETURN_DATE_KEY         DATE            COMMENT 'FK → DIM_DATE.DATE_KEY',
+    PRODUCT_KEY             NUMBER          COMMENT 'FK → DIM_PRODUCT.PRODUCT_KEY',
+    TERRITORY_KEY           NUMBER          COMMENT 'FK → DIM_TERRITORY.TERRITORY_KEY',
+    RETURN_QUANTITY         NUMBER,
+    UNIT_PRICE              NUMBER(12,4),
+    RETURN_REVENUE_IMPACT   NUMBER(14,2)    COMMENT 'Return Qty × Unit Price (negative revenue)',
+    LOAD_TIMESTAMP          TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+)
+COMMENT = 'Returns fact table — grain: return record'
+CLUSTER BY (RETURN_DATE_KEY, TERRITORY_KEY);
+
+ALTER TABLE ADVENTURE_WORKS_DB.GOLD.FACT_RETURNS
+    ADD FOREIGN KEY (PRODUCT_KEY)      REFERENCES ADVENTURE_WORKS_DB.GOLD.DIM_PRODUCT(PRODUCT_KEY)     RELY NOVALIDATE;
+ALTER TABLE ADVENTURE_WORKS_DB.GOLD.FACT_RETURNS
+    ADD FOREIGN KEY (TERRITORY_KEY)    REFERENCES ADVENTURE_WORKS_DB.GOLD.DIM_TERRITORY(TERRITORY_KEY) RELY NOVALIDATE;
+ALTER TABLE ADVENTURE_WORKS_DB.GOLD.FACT_RETURNS
+    ADD FOREIGN KEY (RETURN_DATE_KEY)  REFERENCES ADVENTURE_WORKS_DB.GOLD.DIM_DATE(DATE_KEY)            RELY NOVALIDATE;
+
+-- =============================================================================
+-- VERIFICATION
+-- =============================================================================
+-- SELECT TABLE_NAME, ROW_COUNT
+-- FROM   ADVENTURE_WORKS_DB.INFORMATION_SCHEMA.TABLES
+-- WHERE  TABLE_SCHEMA = 'GOLD'
+-- ORDER BY TABLE_NAME;
