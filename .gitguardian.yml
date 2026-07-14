@@ -1,0 +1,11 @@
+version: 2
+
+# SQL DDL scripts contain placeholder credentials (e.g. MUST_CHANGE_PASSWORD = TRUE)
+# that are not real secrets — they are template values users must replace before use.
+paths-ignore:
+  - "sql/**"
+  - "**/*.sql"
+  - "**/*.csv"
+  - "**/*.xlsx"
+  - "**/*.docx"
+  - "**/*.pdf"

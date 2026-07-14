@@ -1,0 +1,14 @@
+# Code Owners — Adventure Works Capstone
+# Syntax: <path-pattern>   <@github-username>
+
+# Default owner for everything
+*                                   @shashekhar-art
+
+# Snowflake config — extra review required
+config/snowflake_config.py          @shashekhar-art
+
+# Security files — mandatory review
+sql/security/                       @shashekhar-art
+
+# GitHub workflows
+.github/                            @shashekhar-art

@@ -1,0 +1,33 @@
+name: Feature Request
+description: Propose a new analytics query, view, or pipeline enhancement
+title: "[FEAT] "
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Target Layer
+      options: [ Bronze, Silver, Gold, SQL/Views, Export, Documentation ]
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: What would you like added or changed?
+    validations:
+      required: true
+
+  - type: textarea
+    id: business_value
+    attributes:
+      label: Business Value
+      placeholder: Which business question does this answer?
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      value: |
+        - [ ] ...
+        - [ ] ...

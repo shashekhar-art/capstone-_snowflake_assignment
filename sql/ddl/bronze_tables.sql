@@ -1,10 +1,8 @@
-﻿-- =============================================================================
--- BRONZE LAYER DDL
+﻿-- BRONZE LAYER DDL
 -- Adventure Works Capstone Project
 -- Purpose : Create raw ingestion tables in the BRONZE schema.
 --           No transformations — all columns stored as VARCHAR or NUMBER
 --           matching the source CSV exactly.
--- =============================================================================
 
 -- ── Database & Schema ─────────────────────────────────────────────────────────
 CREATE DATABASE IF NOT EXISTS ADVENTURE_WORKS_DB;
@@ -36,9 +34,7 @@ CREATE STAGE IF NOT EXISTS ADVENTURE_WORKS_DB.BRONZE.RAW_DATA_STAGE
     FILE_FORMAT = ADVENTURE_WORKS_DB.BRONZE.CSV_FORMAT
     COMMENT     = 'Internal stage for raw CSV uploads';
 
--- =============================================================================
 -- BRONZE TABLES
--- =============================================================================
 
 -- Sales 2020
 CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.BRONZE.BRONZE_SALES_2020 (
@@ -184,9 +180,7 @@ CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.BRONZE.BRONZE_CATEGORY_SALES_UNPIVOT 
 )
 COMMENT = 'Pivoted category sales by region — used for UNPIVOT demonstration';
 
--- =============================================================================
 -- VERIFICATION QUERIES
--- =============================================================================
 -- SELECT TABLE_SCHEMA, TABLE_NAME, ROW_COUNT, BYTES
 -- FROM   ADVENTURE_WORKS_DB.INFORMATION_SCHEMA.TABLES
 -- WHERE  TABLE_SCHEMA = 'BRONZE'

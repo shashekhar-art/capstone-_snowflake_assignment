@@ -1,16 +1,16 @@
-﻿-- =============================================================================
+﻿
 -- ANALYTICS QUERIES
 -- Adventure Works Capstone Project
 -- Purpose : Business-facing SQL queries against the GOLD star schema.
 --           Covers revenue, customers, products, returns, and trend analysis.
--- =============================================================================
+
 
 USE DATABASE ADVENTURE_WORKS_DB;
 USE SCHEMA   ADVENTURE_WORKS_DB.GOLD;
 
--- =============================================================================
+
 -- 1. OVERALL SALES SUMMARY BY YEAR
--- =============================================================================
+
 SELECT
     d.YEAR,
     COUNT(DISTINCT f.ORDER_NUMBER)          AS TOTAL_ORDERS,
@@ -25,9 +25,9 @@ JOIN DIM_DATE d ON f.ORDER_DATE_KEY = d.DATE_KEY
 GROUP BY d.YEAR
 ORDER BY d.YEAR;
 
--- =============================================================================
+
 -- 2. MONTHLY REVENUE TREND (2020–2022)
--- =============================================================================
+
 SELECT
     d.YEAR,
     d.MONTH_NUM,
@@ -45,9 +45,9 @@ JOIN DIM_DATE d ON f.ORDER_DATE_KEY = d.DATE_KEY
 GROUP BY d.YEAR, d.MONTH_NUM, d.MONTH_NAME
 ORDER BY d.YEAR, d.MONTH_NUM;
 
--- =============================================================================
+
 -- 3. REVENUE BY PRODUCT CATEGORY & SUBCATEGORY
--- =============================================================================
+
 SELECT
     p.CATEGORY_NAME,
     p.SUBCATEGORY_NAME,
@@ -61,9 +61,9 @@ JOIN DIM_PRODUCT p ON f.PRODUCT_KEY = p.PRODUCT_KEY
 GROUP BY p.CATEGORY_NAME, p.SUBCATEGORY_NAME
 ORDER BY TOTAL_REVENUE DESC;
 
--- =============================================================================
+
 -- 4. TOP 10 BEST-SELLING PRODUCTS
--- =============================================================================
+
 SELECT
     p.PRODUCT_KEY,
     p.PRODUCT_NAME,
@@ -78,9 +78,9 @@ GROUP BY 1,2,3,4
 ORDER BY UNITS_SOLD DESC
 LIMIT 10;
 
--- =============================================================================
+
 -- 5. CUSTOMER SEGMENTATION ANALYSIS
--- =============================================================================
+
 SELECT
     c.INCOME_BAND,
     c.OCCUPATION,
@@ -96,9 +96,9 @@ JOIN DIM_CUSTOMER c ON f.CUSTOMER_KEY = c.CUSTOMER_KEY
 GROUP BY 1,2,3,4
 ORDER BY REVENUE_PER_CUSTOMER DESC;
 
--- =============================================================================
+
 -- 6. REVENUE BY GEOGRAPHY (TERRITORY)
--- =============================================================================
+
 SELECT
     t.CONTINENT,
     t.COUNTRY,
@@ -113,9 +113,9 @@ JOIN DIM_TERRITORY t ON f.TERRITORY_KEY = t.TERRITORY_KEY
 GROUP BY 1,2,3
 ORDER BY TOTAL_REVENUE DESC;
 
--- =============================================================================
+
 -- 7. RETURN RATE BY PRODUCT (UNITS RETURNED vs UNITS SOLD)
--- =============================================================================
+
 SELECT
     p.PRODUCT_NAME,
     p.CATEGORY_NAME,
@@ -132,9 +132,9 @@ HAVING UNITS_SOLD > 0
 ORDER BY RETURN_RATE_PCT DESC
 LIMIT 20;
 
--- =============================================================================
+
 -- 8. QUARTERLY REVENUE WITH YoY COMPARISON
--- =============================================================================
+
 WITH quarterly AS (
     SELECT
         d.YEAR,
@@ -158,9 +158,9 @@ SELECT
 FROM quarterly
 ORDER BY YEAR, QUARTER_NUM;
 
--- =============================================================================
+
 -- 9. CUSTOMER LIFETIME VALUE (CLV) — TOP 20
--- =============================================================================
+
 SELECT
     c.CUSTOMER_KEY,
     c.FULL_NAME,
@@ -180,9 +180,9 @@ GROUP BY 1,2,3,4
 ORDER BY LIFETIME_REVENUE DESC
 LIMIT 20;
 
--- =============================================================================
+
 -- 10. PRODUCT CATEGORY SALES UNPIVOT ANALYSIS
--- =============================================================================
+
 SELECT
     SALE_DATE,
     PRODUCT_CATEGORY,
@@ -194,9 +194,9 @@ FROM ADVENTURE_WORKS_DB.SILVER.SILVER_CATEGORY_SALES_UNPIVOT
 GROUP BY 1,2
 ORDER BY SALE_DATE, PRODUCT_CATEGORY;
 
--- =============================================================================
+
 -- 11. WEEKEND vs WEEKDAY SALES PATTERN
--- =============================================================================
+
 SELECT
     d.IS_WEEKEND,
     IFF(d.IS_WEEKEND, 'Weekend', 'Weekday')  AS DAY_TYPE,
@@ -208,9 +208,9 @@ JOIN DIM_DATE d ON f.ORDER_DATE_KEY = d.DATE_KEY
 GROUP BY 1,2
 ORDER BY 1;
 
--- =============================================================================
+
 -- 12. RUNNING CUMULATIVE REVENUE BY YEAR
--- =============================================================================
+
 SELECT
     d.YEAR,
     d.MONTH_NUM,
@@ -223,3 +223,70 @@ FROM FACT_SALES f
 JOIN DIM_DATE d ON f.ORDER_DATE_KEY = d.DATE_KEY
 GROUP BY d.YEAR, d.MONTH_NUM, d.MONTH_NAME
 ORDER BY d.YEAR, d.MONTH_NUM;
+
+
+-- 13. PRODUCT PRICE TIER REVENUE MIX
+
+SELECT
+    CASE
+        WHEN p.PRODUCT_PRICE < 50   THEN '01_Budget (<$50)'
+        WHEN p.PRODUCT_PRICE < 200  THEN '02_Mid-Range ($50-$199)'
+        WHEN p.PRODUCT_PRICE < 500  THEN '03_Premium ($200-$499)'
+        ELSE                             '04_Luxury ($500+)'
+    END                                        AS PRICE_TIER,
+    COUNT(DISTINCT f.ORDER_NUMBER)             AS TOTAL_ORDERS,
+    SUM(f.ORDER_QUANTITY)                      AS TOTAL_UNITS,
+    ROUND(SUM(f.GROSS_REVENUE), 2)             AS TOTAL_REVENUE,
+    ROUND(100 * SUM(f.GROSS_REVENUE)
+          / SUM(SUM(f.GROSS_REVENUE)) OVER (), 2) AS REVENUE_PCT
+FROM FACT_SALES f
+JOIN DIM_PRODUCT p ON f.PRODUCT_KEY = p.PRODUCT_KEY
+GROUP BY 1
+ORDER BY 1;
+
+
+-- 14. FISCAL QUARTER REVENUE  (fiscal year starts 1-Jul)
+
+SELECT
+    CASE
+        WHEN d.MONTH_NUM IN (7,8,9)    THEN d.YEAR || '-Q1'
+        WHEN d.MONTH_NUM IN (10,11,12) THEN d.YEAR || '-Q2'
+        WHEN d.MONTH_NUM IN (1,2,3)    THEN d.YEAR || '-Q3'
+        ELSE                                d.YEAR || '-Q4'
+    END                                    AS FISCAL_QUARTER,
+    CASE
+        WHEN d.MONTH_NUM >= 7 THEN d.YEAR
+        ELSE d.YEAR - 1
+    END                                    AS FISCAL_YEAR,
+    ROUND(SUM(f.GROSS_REVENUE), 2)         AS REVENUE,
+    ROUND(SUM(f.TOTAL_COST), 2)            AS COST,
+    ROUND(SUM(f.GROSS_REVENUE) - SUM(f.TOTAL_COST), 2) AS GROSS_PROFIT,
+    ROUND(100 * (SUM(f.GROSS_REVENUE) - SUM(f.TOTAL_COST))
+          / NULLIF(SUM(f.GROSS_REVENUE), 0), 2)        AS MARGIN_PCT
+FROM FACT_SALES f
+JOIN DIM_DATE d ON f.ORDER_DATE_KEY = d.DATE_KEY
+GROUP BY 1, 2
+ORDER BY 2, 1;
+
+
+-- 15. CUSTOMER AGE BAND ANALYSIS
+
+SELECT
+    CASE
+        WHEN DATEDIFF('year', c.BIRTH_DATE, CURRENT_DATE()) < 30 THEN '18-29'
+        WHEN DATEDIFF('year', c.BIRTH_DATE, CURRENT_DATE()) < 40 THEN '30-39'
+        WHEN DATEDIFF('year', c.BIRTH_DATE, CURRENT_DATE()) < 50 THEN '40-49'
+        WHEN DATEDIFF('year', c.BIRTH_DATE, CURRENT_DATE()) < 60 THEN '50-59'
+        ELSE '60+'
+    END                                    AS AGE_BAND,
+    COUNT(DISTINCT c.CUSTOMER_KEY)         AS CUSTOMERS,
+    COUNT(DISTINCT f.ORDER_NUMBER)         AS TOTAL_ORDERS,
+    ROUND(SUM(f.GROSS_REVENUE), 2)         AS TOTAL_REVENUE,
+    ROUND(AVG(f.GROSS_REVENUE), 2)         AS AVG_ORDER_VALUE,
+    ROUND(SUM(f.GROSS_REVENUE)
+          / NULLIF(COUNT(DISTINCT c.CUSTOMER_KEY), 0), 2) AS REVENUE_PER_CUSTOMER
+FROM FACT_SALES f
+JOIN DIM_CUSTOMER c ON f.CUSTOMER_KEY = c.CUSTOMER_KEY
+WHERE c.BIRTH_DATE IS NOT NULL
+GROUP BY 1
+ORDER BY 1;

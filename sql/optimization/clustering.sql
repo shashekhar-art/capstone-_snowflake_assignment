@@ -1,17 +1,13 @@
-﻿-- =============================================================================
--- CLUSTERING & PERFORMANCE OPTIMIZATION
+﻿-- CLUSTERING & PERFORMANCE OPTIMIZATION
 -- Adventure Works Capstone Project
 -- Purpose : Configure Snowflake cluster keys, search optimization,
 --           result caching, and query-profile tuning recommendations.
--- =============================================================================
 
 USE DATABASE ADVENTURE_WORKS_DB;
 
--- =============================================================================
 -- 1. CLUSTER KEYS ON FACT TABLES
 -- Rationale: Queries almost always filter on ORDER_DATE_KEY (range scans),
 --            TERRITORY_KEY (region drill-downs), and PRODUCT_KEY (product analysis).
--- =============================================================================
 
 -- FACT_SALES — cluster by date first, then territory, then product
 ALTER TABLE ADVENTURE_WORKS_DB.GOLD.FACT_SALES
@@ -25,11 +21,9 @@ ALTER TABLE ADVENTURE_WORKS_DB.GOLD.FACT_RETURNS
 ALTER TABLE ADVENTURE_WORKS_DB.SILVER.SILVER_SALES
     CLUSTER BY (ORDER_DATE, TERRITORY_KEY);
 
--- =============================================================================
 -- 2. CLUSTER KEYS ON DIMENSION TABLES
 -- Smaller tables rarely need clustering, but product and customer
 -- benefit from category/segment-based micro-partitioning.
--- =============================================================================
 
 ALTER TABLE ADVENTURE_WORKS_DB.GOLD.DIM_PRODUCT
     CLUSTER BY (CATEGORY_NAME, PRICE_TIER);
@@ -37,10 +31,8 @@ ALTER TABLE ADVENTURE_WORKS_DB.GOLD.DIM_PRODUCT
 ALTER TABLE ADVENTURE_WORKS_DB.GOLD.DIM_CUSTOMER
     CLUSTER BY (INCOME_BAND, OCCUPATION);
 
--- =============================================================================
 -- 3. CHECK CLUSTERING DEPTH (AFTER DATA LOAD)
 -- Run these after loading data to evaluate whether reclustering is needed.
--- =============================================================================
 SELECT SYSTEM$CLUSTERING_DEPTH('ADVENTURE_WORKS_DB.GOLD.FACT_SALES');
 SELECT SYSTEM$CLUSTERING_INFORMATION('ADVENTURE_WORKS_DB.GOLD.FACT_SALES',
     '(ORDER_DATE_KEY, TERRITORY_KEY, PRODUCT_KEY)');
@@ -49,11 +41,9 @@ SELECT SYSTEM$CLUSTERING_DEPTH('ADVENTURE_WORKS_DB.GOLD.FACT_RETURNS');
 SELECT SYSTEM$CLUSTERING_INFORMATION('ADVENTURE_WORKS_DB.GOLD.FACT_RETURNS',
     '(RETURN_DATE_KEY, TERRITORY_KEY)');
 
--- =============================================================================
 -- 4. SEARCH OPTIMIZATION SERVICE
 -- Adds point-lookup acceleration for high-cardinality equality filters
 -- (e.g., WHERE ORDER_NUMBER = 'SO12345').
--- =============================================================================
 ALTER TABLE ADVENTURE_WORKS_DB.GOLD.FACT_SALES
     ADD SEARCH OPTIMIZATION ON EQUALITY(ORDER_NUMBER);
 
@@ -63,9 +53,7 @@ ALTER TABLE ADVENTURE_WORKS_DB.GOLD.DIM_CUSTOMER
 ALTER TABLE ADVENTURE_WORKS_DB.GOLD.DIM_PRODUCT
     ADD SEARCH OPTIMIZATION ON EQUALITY(PRODUCT_SKU, PRODUCT_NAME);
 
--- =============================================================================
 -- 5. WAREHOUSE SCALING STRATEGY
--- =============================================================================
 
 -- Analytics warehouse (BI tool connections — Auto-scale for concurrency)
 CREATE OR REPLACE WAREHOUSE CAPSTONE_ANALYTICS_WH
@@ -86,15 +74,12 @@ CREATE OR REPLACE WAREHOUSE CAPSTONE_ETL_WH
     MAX_CLUSTER_COUNT      = 1
     COMMENT                = 'Dedicated ETL warehouse for heavy Bronze→Silver→Gold transforms';
 
--- =============================================================================
 -- 6. RESULT CACHE — SESSION SETTINGS
 -- Snowflake caches query results for 24 hours by default.
 -- Verify it is enabled (should be TRUE by default).
--- =============================================================================
 SHOW PARAMETERS LIKE 'USE_CACHED_RESULT' IN SESSION;
 ALTER SESSION SET USE_CACHED_RESULT = TRUE;
 
--- =============================================================================
 -- 7. QUERY PROFILE TIPS — NON-SQL GUIDANCE
 -- (Comments for the assignment — not executable SQL)
 --
@@ -106,12 +91,9 @@ ALTER SESSION SET USE_CACHED_RESULT = TRUE;
 -- f) Spill to disk warnings   -> increase WH size if query profile shows "spilling"
 -- g) Remote vs local spill    -> local spill is OK; remote spill = WH too small
 -- h) Cartesian products       -> check EXPLAIN PLAN for missing join predicates
--- =============================================================================
 
--- =============================================================================
 -- 8. MATERIALIZED VIEW FOR HEAVY AGGREGATION (Optional)
 -- Useful if VW_MONTHLY_KPI is queried thousands of times per day by dashboards.
--- =============================================================================
 CREATE OR REPLACE MATERIALIZED VIEW ADVENTURE_WORKS_DB.GOLD.MV_MONTHLY_REVENUE
 COMMENT = 'Pre-aggregated monthly revenue — refreshed automatically by Snowflake'
 AS
@@ -126,9 +108,7 @@ FROM ADVENTURE_WORKS_DB.GOLD.FACT_SALES f
 JOIN ADVENTURE_WORKS_DB.GOLD.DIM_DATE d ON f.ORDER_DATE_KEY = d.DATE_KEY
 GROUP BY 1,2,3;
 
--- =============================================================================
 -- 9. MONITORING — QUERY HISTORY & CREDIT USAGE
--- =============================================================================
 -- Top 10 most expensive queries (last 7 days)
 SELECT
     QUERY_ID,

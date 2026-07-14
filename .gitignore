@@ -2,6 +2,9 @@
 # Adventure Works Capstone Project — .gitignore
 # =============================================================================
 
+# ── Claude Code internal directory ───────────────────────────────────────────
+.claude/
+
 # ── Credentials & Secrets ─────────────────────────────────────────────────────
 .env
 .env.*
@@ -35,8 +38,10 @@ pip-delete-this-directory.txt
 
 # ── Export / Generated Output ─────────────────────────────────────────────────
 exports/output/
+reports/output/
 *.xlsx
 *.pdf
+*.docx
 *.csv.bak
 *.parquet
 

@@ -1,17 +1,13 @@
-﻿-- =============================================================================
--- GOLD LAYER DDL  —  Star Schema Data Mart
+﻿-- GOLD LAYER DDL  —  Star Schema Data Mart
 -- Adventure Works Capstone Project
 -- Schema  : ADVENTURE_WORKS_DB.GOLD
 -- Model   : Star Schema
 --           4 Dimensions: DIM_DATE, DIM_CUSTOMER, DIM_PRODUCT, DIM_TERRITORY
 --           2 Facts     : FACT_SALES, FACT_RETURNS
--- =============================================================================
 
 CREATE SCHEMA IF NOT EXISTS ADVENTURE_WORKS_DB.GOLD;
 
--- =============================================================================
 -- DIMENSION: DIM_DATE
--- =============================================================================
 CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.GOLD.DIM_DATE (
     DATE_KEY            DATE        NOT NULL    COMMENT 'Natural primary key (the date)',
     YEAR                NUMBER(4)   NOT NULL,
@@ -37,9 +33,7 @@ CLUSTER BY (YEAR, MONTH_NUM);
 ALTER TABLE ADVENTURE_WORKS_DB.GOLD.DIM_DATE
     ADD PRIMARY KEY (DATE_KEY) RELY NOVALIDATE;
 
--- =============================================================================
 -- DIMENSION: DIM_CUSTOMER
--- =============================================================================
 CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.GOLD.DIM_CUSTOMER (
     CUSTOMER_KEY    NUMBER          NOT NULL    COMMENT 'Natural primary key',
     PREFIX          VARCHAR(10),
@@ -65,9 +59,7 @@ CLUSTER BY (INCOME_BAND, OCCUPATION);
 ALTER TABLE ADVENTURE_WORKS_DB.GOLD.DIM_CUSTOMER
     ADD PRIMARY KEY (CUSTOMER_KEY) RELY NOVALIDATE;
 
--- =============================================================================
 -- DIMENSION: DIM_PRODUCT
--- =============================================================================
 CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.GOLD.DIM_PRODUCT (
     PRODUCT_KEY         NUMBER          NOT NULL    COMMENT 'Natural primary key',
     PRODUCT_SKU         VARCHAR(20),
@@ -94,9 +86,7 @@ CLUSTER BY (CATEGORY_NAME, PRICE_TIER);
 ALTER TABLE ADVENTURE_WORKS_DB.GOLD.DIM_PRODUCT
     ADD PRIMARY KEY (PRODUCT_KEY) RELY NOVALIDATE;
 
--- =============================================================================
 -- DIMENSION: DIM_TERRITORY
--- =============================================================================
 CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.GOLD.DIM_TERRITORY (
     TERRITORY_KEY   NUMBER          NOT NULL    COMMENT 'Natural primary key',
     REGION          VARCHAR(50),
@@ -110,10 +100,8 @@ COMMENT = 'Sales territory geography dimension';
 ALTER TABLE ADVENTURE_WORKS_DB.GOLD.DIM_TERRITORY
     ADD PRIMARY KEY (TERRITORY_KEY) RELY NOVALIDATE;
 
--- =============================================================================
 -- FACT: FACT_SALES
 -- Grain: one row per order line item
--- =============================================================================
 CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.GOLD.FACT_SALES (
     -- Degenerate dimensions
     ORDER_NUMBER        VARCHAR(20)     NOT NULL,
@@ -155,10 +143,8 @@ ALTER TABLE ADVENTURE_WORKS_DB.GOLD.FACT_SALES
 ALTER TABLE ADVENTURE_WORKS_DB.GOLD.FACT_SALES
     ADD FOREIGN KEY (ORDER_DATE_KEY) REFERENCES ADVENTURE_WORKS_DB.GOLD.DIM_DATE(DATE_KEY)            RELY NOVALIDATE;
 
--- =============================================================================
 -- FACT: FACT_RETURNS
 -- Grain: one row per return record (ReturnDate × TerritoryKey × ProductKey)
--- =============================================================================
 CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.GOLD.FACT_RETURNS (
     RETURN_DATE_KEY         DATE            COMMENT 'FK → DIM_DATE.DATE_KEY',
     PRODUCT_KEY             NUMBER          COMMENT 'FK → DIM_PRODUCT.PRODUCT_KEY',
@@ -178,9 +164,7 @@ ALTER TABLE ADVENTURE_WORKS_DB.GOLD.FACT_RETURNS
 ALTER TABLE ADVENTURE_WORKS_DB.GOLD.FACT_RETURNS
     ADD FOREIGN KEY (RETURN_DATE_KEY)  REFERENCES ADVENTURE_WORKS_DB.GOLD.DIM_DATE(DATE_KEY)            RELY NOVALIDATE;
 
--- =============================================================================
 -- VERIFICATION
--- =============================================================================
 -- SELECT TABLE_NAME, ROW_COUNT
 -- FROM   ADVENTURE_WORKS_DB.INFORMATION_SCHEMA.TABLES
 -- WHERE  TABLE_SCHEMA = 'GOLD'
