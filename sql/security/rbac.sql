@@ -1,5 +1,4 @@
--- =============================================================================
--- ROLE-BASED ACCESS CONTROL (RBAC)
+﻿-- ROLE-BASED ACCESS CONTROL (RBAC)
 -- Capstone Project - Adventure Works Sales Analytics
 -- Milestone 7: Security & Governance
 --
@@ -7,14 +6,11 @@
 --   ADMIN_ROLE          -> Full administrative access across all layers
 --   DATA_ENGINEER_ROLE  -> ETL access: full on BRONZE/SILVER, write on GOLD
 --   ANALYST_ROLE        -> Read-only access on GOLD tables and views
--- =============================================================================
 
 USE ROLE SYSADMIN;
 USE WAREHOUSE COMPUTE_WH;
 
--- =============================================================================
 -- 1. CREATE ROLES
--- =============================================================================
 
 -- Role hierarchy:
 -- SYSADMIN
@@ -38,9 +34,7 @@ GRANT ROLE ANALYST_ROLE        TO ROLE ADMIN_ROLE;
 -- Elevate ADMIN_ROLE under SYSADMIN
 GRANT ROLE ADMIN_ROLE TO ROLE SYSADMIN;
 
--- =============================================================================
 -- 2. WAREHOUSE GRANTS
--- =============================================================================
 
 -- ADMIN_ROLE and DATA_ENGINEER_ROLE use the main compute warehouse
 GRANT USAGE ON WAREHOUSE COMPUTE_WH TO ROLE ADMIN_ROLE;
@@ -49,18 +43,14 @@ GRANT USAGE ON WAREHOUSE COMPUTE_WH TO ROLE DATA_ENGINEER_ROLE;
 -- ANALYST_ROLE uses the same warehouse (or a dedicated analytics WH if created)
 GRANT USAGE ON WAREHOUSE COMPUTE_WH TO ROLE ANALYST_ROLE;
 
--- =============================================================================
 -- 3. DATABASE GRANTS
--- =============================================================================
 
 -- All roles need usage on the database
 GRANT USAGE ON DATABASE ADVENTURE_WORKS_DB TO ROLE ADMIN_ROLE;
 GRANT USAGE ON DATABASE ADVENTURE_WORKS_DB TO ROLE DATA_ENGINEER_ROLE;
 GRANT USAGE ON DATABASE ADVENTURE_WORKS_DB TO ROLE ANALYST_ROLE;
 
--- =============================================================================
 -- 4. SCHEMA GRANTS
--- =============================================================================
 
 -- BRONZE (RAW) schema — Admin + Data Engineer only
 GRANT USAGE, CREATE TABLE, CREATE STAGE, CREATE FILE FORMAT
@@ -91,9 +81,7 @@ GRANT USAGE, CREATE TABLE, CREATE VIEW
 GRANT USAGE
     ON SCHEMA ADVENTURE_WORKS_DB.GOLD TO ROLE ANALYST_ROLE;
 
--- =============================================================================
 -- 5. TABLE-LEVEL GRANTS
--- =============================================================================
 
 -- BRONZE — Data Engineer full DML
 GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE
@@ -127,9 +115,7 @@ GRANT SELECT
 GRANT SELECT
     ON FUTURE TABLES IN SCHEMA ADVENTURE_WORKS_DB.GOLD TO ROLE ANALYST_ROLE;
 
--- =============================================================================
 -- 6. VIEW GRANTS — GOLD analytical views
--- =============================================================================
 
 GRANT SELECT
     ON ALL VIEWS IN SCHEMA ADVENTURE_WORKS_DB.GOLD TO ROLE ANALYST_ROLE;
@@ -141,9 +127,7 @@ GRANT SELECT
 GRANT SELECT
     ON FUTURE VIEWS IN SCHEMA ADVENTURE_WORKS_DB.GOLD TO ROLE ADMIN_ROLE;
 
--- =============================================================================
 -- 7. CREATE SAMPLE USERS AND ASSIGN ROLES
--- =============================================================================
 
 CREATE USER IF NOT EXISTS ETL_SERVICE_USER
     PASSWORD             = 'Change_Me_2024!'
@@ -164,9 +148,7 @@ CREATE USER IF NOT EXISTS ANALYST_USER
 GRANT ROLE DATA_ENGINEER_ROLE TO USER ETL_SERVICE_USER;
 GRANT ROLE ANALYST_ROLE        TO USER ANALYST_USER;
 
--- =============================================================================
 -- 8. VERIFY GRANTS
--- =============================================================================
 
 SHOW ROLES;
 SHOW GRANTS TO ROLE ADMIN_ROLE;
