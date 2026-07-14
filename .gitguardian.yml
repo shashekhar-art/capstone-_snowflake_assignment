@@ -1,7 +1,7 @@
 version: 2
 
-# SQL DDL scripts contain placeholder credentials (e.g. MUST_CHANGE_PASSWORD = TRUE)
-# that are not real secrets — they are template values users must replace before use.
+# DDL scripts and data files use placeholder values that are not real secrets.
+# Users must substitute real values before deploying to any environment.
 paths-ignore:
   - "sql/**"
   - "**/*.sql"
