@@ -130,7 +130,7 @@ GRANT SELECT
 -- 7. CREATE SAMPLE USERS AND ASSIGN ROLES
 
 CREATE USER IF NOT EXISTS ETL_SERVICE_USER
-    PASSWORD             = 'Change_Me_2024!'
+    PASSWORD             = 'Change_Me_2024!'  -- pragma: allowlist secret
     DEFAULT_ROLE         = DATA_ENGINEER_ROLE
     DEFAULT_WAREHOUSE    = COMPUTE_WH
     DEFAULT_NAMESPACE    = ADVENTURE_WORKS_DB.BRONZE
@@ -138,7 +138,7 @@ CREATE USER IF NOT EXISTS ETL_SERVICE_USER
     COMMENT              = 'Service account for ETL pipeline execution';
 
 CREATE USER IF NOT EXISTS ANALYST_USER
-    PASSWORD             = 'Change_Me_2024!'
+    PASSWORD             = 'Change_Me_2024!'  -- pragma: allowlist secret
     DEFAULT_ROLE         = ANALYST_ROLE
     DEFAULT_WAREHOUSE    = COMPUTE_WH
     DEFAULT_NAMESPACE    = ADVENTURE_WORKS_DB.GOLD
