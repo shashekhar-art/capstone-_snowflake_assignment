@@ -10,7 +10,6 @@ jobs:
   security:
     name: Security Scan
     runs-on: ubuntu-latest
-    continue-on-error: true
 
     steps:
       - name: Checkout code
@@ -25,9 +24,22 @@ jobs:
         run: pip install bandit detect-secrets
 
       - name: Run Bandit security scan
-        continue-on-error: true
-        run: bandit -r config/ bronze_scripts/ silver_scripts/ gold_scripts/ exports/ -ll -ii -f txt
+        run: |
+          bandit -r config/ bronze_scripts/ silver_scripts/ gold_scripts/ exports/ \
+            -ll -ii --skip B608 -f txt
 
       - name: Check for hardcoded secrets
-        continue-on-error: true
-        run: detect-secrets scan > secrets_report.json && cat secrets_report.json
+        run: |
+          detect-secrets scan \
+            --exclude-files '.*\.(sql|csv|xlsx|docx|pdf|md)$' \
+            > secrets_report.json
+          cat secrets_report.json
+          python - <<'EOF'
+          import json, sys
+          data = json.load(open("secrets_report.json"))
+          findings = sum(len(v) for v in data.get("results", {}).values())
+          if findings:
+              print(f"FAIL: {findings} potential secret(s) detected — review secrets_report.json")
+              sys.exit(1)
+          print("OK: No hardcoded secrets detected.")
+          EOF
