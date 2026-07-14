@@ -1,16 +1,12 @@
-﻿-- =============================================================================
--- ANALYTICAL VIEWS
+﻿-- ANALYTICAL VIEWS
 -- Adventure Works Capstone Project
 -- Purpose : Reusable views over the GOLD star schema for BI tools,
 --           dashboards, and self-service analytics.
--- =============================================================================
 
 USE DATABASE ADVENTURE_WORKS_DB;
 USE SCHEMA   ADVENTURE_WORKS_DB.GOLD;
 
--- =============================================================================
 -- VW_SALES_DETAIL  —  Fully joined sales fact with all dimension attributes
--- =============================================================================
 CREATE OR REPLACE VIEW ADVENTURE_WORKS_DB.GOLD.VW_SALES_DETAIL
 COMMENT = 'Flattened sales view — one row per order line item with all dimension labels'
 AS
@@ -71,9 +67,7 @@ JOIN ADVENTURE_WORKS_DB.GOLD.DIM_PRODUCT   p ON f.PRODUCT_KEY   = p.PRODUCT_KEY
 JOIN ADVENTURE_WORKS_DB.GOLD.DIM_CUSTOMER  c ON f.CUSTOMER_KEY  = c.CUSTOMER_KEY
 JOIN ADVENTURE_WORKS_DB.GOLD.DIM_TERRITORY t ON f.TERRITORY_KEY = t.TERRITORY_KEY;
 
--- =============================================================================
 -- VW_MONTHLY_KPI  —  Month-level KPIs for dashboard tile cards
--- =============================================================================
 CREATE OR REPLACE VIEW ADVENTURE_WORKS_DB.GOLD.VW_MONTHLY_KPI
 COMMENT = 'Monthly revenue, profit, orders, and units — ready for KPI tiles'
 AS
@@ -94,9 +88,7 @@ FROM ADVENTURE_WORKS_DB.GOLD.FACT_SALES f
 JOIN ADVENTURE_WORKS_DB.GOLD.DIM_DATE d ON f.ORDER_DATE_KEY = d.DATE_KEY
 GROUP BY 1,2,3,4;
 
--- =============================================================================
 -- VW_PRODUCT_PERFORMANCE  —  Product-level revenue and return metrics
--- =============================================================================
 CREATE OR REPLACE VIEW ADVENTURE_WORKS_DB.GOLD.VW_PRODUCT_PERFORMANCE
 COMMENT = 'Product revenue, profit, units sold, return rate, and return impact'
 AS
@@ -121,9 +113,7 @@ JOIN ADVENTURE_WORKS_DB.GOLD.DIM_PRODUCT p ON f.PRODUCT_KEY = p.PRODUCT_KEY
 LEFT JOIN ADVENTURE_WORKS_DB.GOLD.FACT_RETURNS r ON f.PRODUCT_KEY = r.PRODUCT_KEY
 GROUP BY 1,2,3,4,5,6,7,8;
 
--- =============================================================================
 -- VW_CUSTOMER_360  —  Customer summary with RFM-style metrics
--- =============================================================================
 CREATE OR REPLACE VIEW ADVENTURE_WORKS_DB.GOLD.VW_CUSTOMER_360
 COMMENT = 'Customer 360 view: demographics + purchase behaviour + RFM signals'
 AS
@@ -170,9 +160,7 @@ SELECT
 FROM ADVENTURE_WORKS_DB.GOLD.DIM_CUSTOMER c
 JOIN base b ON c.CUSTOMER_KEY = b.CUSTOMER_KEY;
 
--- =============================================================================
 -- VW_TERRITORY_SUMMARY  —  Revenue and order metrics rolled up by geography
--- =============================================================================
 CREATE OR REPLACE VIEW ADVENTURE_WORKS_DB.GOLD.VW_TERRITORY_SUMMARY
 COMMENT = 'Revenue and orders grouped by Continent → Country → Region'
 AS
@@ -191,9 +179,7 @@ FROM ADVENTURE_WORKS_DB.GOLD.FACT_SALES f
 JOIN ADVENTURE_WORKS_DB.GOLD.DIM_TERRITORY t ON f.TERRITORY_KEY = t.TERRITORY_KEY
 GROUP BY 1,2,3,4;
 
--- =============================================================================
 -- VW_RETURN_ANALYSIS  —  Returns joined with product and territory
--- =============================================================================
 CREATE OR REPLACE VIEW ADVENTURE_WORKS_DB.GOLD.VW_RETURN_ANALYSIS
 COMMENT = 'Return transactions with product and territory context'
 AS

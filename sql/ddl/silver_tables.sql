@@ -1,16 +1,12 @@
-﻿-- =============================================================================
--- SILVER LAYER DDL
+﻿-- SILVER LAYER DDL
 -- Adventure Works Capstone Project
 -- Purpose : Cleansed, typed, and enriched tables derived from Bronze.
 --           All VARCHAR dates cast to DATE; codes expanded to labels;
 --           derived columns (age, income_band, margin_pct) added.
--- =============================================================================
 
 CREATE SCHEMA IF NOT EXISTS ADVENTURE_WORKS_DB.SILVER;
 
--- =============================================================================
 -- SILVER_CALENDAR
--- =============================================================================
 CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.SILVER.SILVER_CALENDAR (
     DATE_KEY            DATE            NOT NULL COMMENT 'Calendar date (PK)',
     YEAR                NUMBER(4)       NOT NULL,
@@ -29,9 +25,7 @@ CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.SILVER.SILVER_CALENDAR (
 )
 COMMENT = 'Enriched calendar with day/month/quarter attributes';
 
--- =============================================================================
 -- SILVER_TERRITORY
--- =============================================================================
 CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.SILVER.SILVER_TERRITORY (
     TERRITORY_KEY   NUMBER          NOT NULL,
     REGION          VARCHAR(50)     NOT NULL,
@@ -41,9 +35,7 @@ CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.SILVER.SILVER_TERRITORY (
 )
 COMMENT = 'Standardised territory reference (INITCAP, trimmed)';
 
--- =============================================================================
 -- SILVER_PRODUCT_CATEGORY
--- =============================================================================
 CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.SILVER.SILVER_PRODUCT_CATEGORY (
     CATEGORY_KEY        NUMBER          NOT NULL,
     CATEGORY_NAME       VARCHAR(50)     NOT NULL,
@@ -53,9 +45,7 @@ CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.SILVER.SILVER_PRODUCT_CATEGORY (
 )
 COMMENT = 'Flattened category + subcategory hierarchy';
 
--- =============================================================================
 -- SILVER_PRODUCT
--- =============================================================================
 CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.SILVER.SILVER_PRODUCT (
     PRODUCT_KEY         NUMBER          NOT NULL,
     SUBCATEGORY_KEY     NUMBER,
@@ -77,9 +67,7 @@ CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.SILVER.SILVER_PRODUCT (
 )
 COMMENT = 'Enriched product master with category hierarchy and margin metrics';
 
--- =============================================================================
 -- SILVER_CUSTOMER
--- =============================================================================
 CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.SILVER.SILVER_CUSTOMER (
     CUSTOMER_KEY    NUMBER          NOT NULL,
     PREFIX          VARCHAR(10),
@@ -101,9 +89,7 @@ CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.SILVER.SILVER_CUSTOMER (
 )
 COMMENT = 'Cleansed customer master: codes expanded, derived age and income band';
 
--- =============================================================================
 -- SILVER_SALES
--- =============================================================================
 CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.SILVER.SILVER_SALES (
     ORDER_NUMBER                VARCHAR(20)     NOT NULL,
     ORDER_LINE_ITEM             NUMBER          NOT NULL,
@@ -119,9 +105,7 @@ CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.SILVER.SILVER_SALES (
 )
 COMMENT = 'Consolidated sales transactions (2020–2022) with typed dates and lead time';
 
--- =============================================================================
 -- SILVER_RETURNS
--- =============================================================================
 CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.SILVER.SILVER_RETURNS (
     RETURN_DATE     DATE,
     TERRITORY_KEY   NUMBER,
@@ -131,9 +115,7 @@ CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.SILVER.SILVER_RETURNS (
 )
 COMMENT = 'Cleansed returns data with typed RETURN_DATE';
 
--- =============================================================================
 -- SILVER_CATEGORY_SALES_UNPIVOT
--- =============================================================================
 CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.SILVER.SILVER_CATEGORY_SALES_UNPIVOT (
     SALE_DATE           DATE,
     PRODUCT_CATEGORY    VARCHAR(50),
@@ -142,9 +124,7 @@ CREATE OR REPLACE TABLE ADVENTURE_WORKS_DB.SILVER.SILVER_CATEGORY_SALES_UNPIVOT 
 )
 COMMENT = 'Unpivoted category sales — one row per date × category × region';
 
--- =============================================================================
 -- VERIFICATION
--- =============================================================================
 -- SELECT TABLE_NAME, ROW_COUNT
 -- FROM   ADVENTURE_WORKS_DB.INFORMATION_SCHEMA.TABLES
 -- WHERE  TABLE_SCHEMA = 'SILVER'
