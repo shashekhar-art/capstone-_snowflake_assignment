@@ -25,7 +25,7 @@ load_dotenv()   # loads .env if present; env vars always win over defaults
 SNOWFLAKE_CONFIG = {
     "account":   os.getenv("SNOWFLAKE_ACCOUNT",   "uq57089.ap-southeast-7.aws"),
     "user":      os.getenv("SNOWFLAKE_USER",       "shashekhar"),
-    "password":  os.getenv("SNOWFLAKE_PASSWORD",   "Sha@rock@54321"),
+    "password":  os.getenv("SNOWFLAKE_PASSWORD"),
     "warehouse": os.getenv("SNOWFLAKE_WAREHOUSE",  "COMPUTE_WH"),
     "database":  os.getenv("SNOWFLAKE_DATABASE",   "ADVENTURE_WORKS_DB"),
     "role":      os.getenv("SNOWFLAKE_ROLE",        "SYSADMIN"),
